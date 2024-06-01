@@ -1,3 +1,4 @@
+#include <time.h>
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
@@ -6,19 +7,14 @@
 #include <SFML/System.hpp>
 #include <SFML/Window/Keyboard.hpp>
 #include <SFML/Window/WindowStyle.hpp>
-#include <cmath>
-#include <iostream>
-#include <string>
-#include <time.h>
+#include<SFML/Audio.hpp>
 #include <cstdlib>
 
 enum class Stats {initGame, inGame, endGame, pause};
 
-using enum Stats;
 using namespace sf;
-using namespace std;
 
-Stats stats = inGame;
+Stats stats = Stats::inGame;
 
 RectangleShape makesSquare(Sprite &image, RenderWindow &window);
 
@@ -34,10 +30,7 @@ int main(){
 
   //ADD TEXT
   Font font;
-  if(!font.loadFromFile("sprites/./KingGaming.ttf")){
-    cout << "Error to upload text font!\n";
-    return 1;
-  }
+  font.loadFromFile("Archives/Fonts/./KingGaming.ttf");
   
   //In game
   Text points ("Catch: 0" , font , 20), lose("Loses: 0", font, 20);
@@ -47,16 +40,34 @@ int main(){
   int catchScore = 0;/*                         */int loseScore = 0;
   
   //Off Game
-  Text gameOverTxt("GAME OVER", font, 100), restart("Aperte F1 para voltar e F2 para sair", font, 12);
-  gameOverTxt.setPosition(100,100);/*           */restart.setPosition(window.getSize().x - restart.getCharacterSize()*20, 3);
-  gameOverTxt.setFillColor(Color::White);/*   */restart.setFillColor(textColor);
+  Text gameOverTxt("GAME OVER", font, 100), restart("Aperte F1 para voltar e Enter para sair", font, 12);
+  gameOverTxt.setPosition(150,250);/*           */restart.setPosition(window.getSize().x - restart.getCharacterSize()*28, 3);
+  gameOverTxt.setFillColor({252,254,178});/*   */restart.setFillColor(textColor);
+
+  //Pause
+  Text pauseTxt("PAUSE", font, 100);
+  pauseTxt.setPosition(200,250);
+  pauseTxt.setFillColor({252,254,178});
+  
+
+  //ADD SOUNDS
+  SoundBuffer clickBuffer, fallBuffer;
+  clickBuffer.loadFromFile("Archives/Sounds/./click.wav");  
+  fallBuffer.loadFromFile("Archives/Sounds/./click-error.wav");
+  
+  Sound click (clickBuffer); 
+  Sound fall(fallBuffer);
+
+  Music music;
+  music.openFromFile("Archives/Sounds/./soundtrack.wav");
+
 
 
   //MAKE OBJECTS
   
   //Smiles
   Texture sample;
-  sample.loadFromFile("sprites/./sample.jpg");
+  sample.loadFromFile("Archives/sprites/./sample.jpg");
   Sprite sampleImage(sample);
 
   size_t maxObj = 5; int numOfObj = 0;
@@ -65,7 +76,7 @@ int main(){
 
   //Background in game
   Texture backText;
-  backText.loadFromFile("sprites/./background.jpg");
+  backText.loadFromFile("Archives/sprites/./background.jpg");
   Sprite backImage(backText);
   
   RectangleShape background(Vector2f(window.getSize().x , window.getSize().y));
@@ -73,7 +84,7 @@ int main(){
 
   //Background off game
   Texture gameOverText;
-  gameOverText.loadFromFile("sprites/./gameover");
+  gameOverText.loadFromFile("Archives/sprites/./gameover.jpg");
   Sprite gameOverImage(gameOverText);
 
   RectangleShape gameOver (Vector2f(window.getSize().x, window.getSize().y));
@@ -81,7 +92,7 @@ int main(){
   
   //Carrot
   Texture carrotText;
-  carrotText.loadFromFile("sprites/./carrot.png");
+  carrotText.loadFromFile("Archives/sprites/./carrot.png");
   Sprite carrotImage(carrotText);
 
   RectangleShape carrot(Vector2f(70,50));
@@ -98,6 +109,10 @@ int main(){
 
   float speed = 2.0f;    int controlSpeed = 1;
 
+  float xPosition;
+
+  bool del = false;
+
 
   /*
   LOGIC: PRESS? -> MOVE -> IF BUTTOM -> YES -> TOP
@@ -109,7 +124,7 @@ int main(){
 
 
 
-
+//////////////////////////////GAME////////////////////////////
 
   while(window.isOpen()){
     Event event;
@@ -117,17 +132,26 @@ int main(){
     while(window.pollEvent(event)){
       if(event.type == Event::Closed) window.close();  //Close Window
 
-        mouseCoord = Mouse::getPosition(window); //Recive Mouse coord
-        pixelMouseCoord = window.mapPixelToCoords(mouseCoord); //Accurace the coord if window had a Resized
-      
-        carrot.setPosition(pixelMouseCoord.x - 15,pixelMouseCoord.y - 10);
-      }
+      //CONTROL MOUSE BUTTOM:call Run()
 
-    //CONTROL MOUSE BUTTOM
-    if(event.type == event.MouseButtonPressed) pressed = false;
+      if(event.type == event.MouseButtonPressed) pressed = false;
+
+      mouseCoord = Mouse::getPosition(window); //Recive Mouse coord
+      pixelMouseCoord = window.mapPixelToCoords(mouseCoord); //Accurace the coord if window had a Resized
+      
+      carrot.setPosition(pixelMouseCoord.x - 15,pixelMouseCoord.y - 10);
+
+      if(Keyboard::isKeyPressed(Keyboard::Enter) && stats == Stats::inGame) stats = Stats::pause;
+    }
+
+  if(music.getStatus() == Music::Stopped || music.getStatus() == Music::Paused) music.play();
 
   
-  if(stats == inGame){                   ///////IN GAME//////
+  if(stats == Stats::inGame){                   ///////IN GAME//////
+      
+      //INIT MUSIC
+      if(music.getStatus() == Music::Stopped || music.getStatus() == Music::Paused) music.play();
+
       //ADJUST INIT OF SMILES
       if(numOfObj < maxObj ){
         if(timer > maxTimer){
@@ -140,12 +164,13 @@ int main(){
 
       //CHECK ALL SMILES
       for(size_t i = 0 ; i < numOfObj ; i++){
-        bool del = false;
-        float xPosition = rand()%(static_cast<int>(window.getSize().x) - static_cast<int>(smile->getSize().x) - 10) + 10;
+        del = false;
+        xPosition = rand()%(static_cast<int>(window.getSize().x) - static_cast<int>(smile->getSize().x) - 10) + 10;
 
         //CONDITION TO GAIN POINTS
         if(Mouse::isButtonPressed(Mouse::Left)){
           if(smile[i].getGlobalBounds().contains(carrot.getPosition()) && !pressed){
+            click.play();
             del = true;
             catchScore++;
             controlSpeed++;
@@ -160,6 +185,7 @@ int main(){
 
         //CONDITION TO GAIN LOSE POINTS
         if((smile[i].getPosition().y + smile->getSize().y) > window.getSize().y){ 
+          fall.play();
           del = true;
           loseScore++;
           lose.setString("Loses: " + std::to_string(loseScore));
@@ -182,7 +208,7 @@ int main(){
       
       //GAME OVER
       if(loseScore == 10){
-        stats = inGame;
+        stats = Stats::endGame;
       }
 
 
@@ -194,14 +220,21 @@ int main(){
       window.draw(carrot);
       window.draw(points);
       window.draw(lose);
+      
+      window.display();
   
-  } else if (stats == endGame){          ///////GAME OVER////////
+  } else if (stats == Stats::endGame){          ///////GAME OVER////////
+    music.stop();
+
     window.clear();
     window.draw(gameOver);
+    window.setMouseCursorVisible(true);
 
     window.draw(gameOverTxt);
     window.draw(restart);
     window.draw(points);
+
+    window.display();
 
     if(Keyboard::isKeyPressed(Keyboard::F1)){
       speed = 2.0;
@@ -211,13 +244,29 @@ int main(){
       controlSpeed = 1;
       catchScore = 0;
       loseScore = 0;
-    }else if(Keyboard::isKeyPressed(Keyboard::F2)) window.close();
+      points.setString("Catch: 0");
+      window.setMouseCursorVisible(false);
+      
+      stats = Stats::inGame; 
+
+    }else if(Keyboard::isKeyPressed(Keyboard::Enter)) window.close();
+
+  } else if (stats == Stats::pause){            //////////////PAUSE///////////////
+    music.pause();
+
+    window.clear();
+    window.draw(gameOver);
+    window.draw(carrot);
+    window.draw(points);
+    window.draw(lose);
+    window.draw(pauseTxt);
+
+    window.display();
+
+    if(Keyboard::isKeyPressed(Keyboard::Escape)) stats = Stats::inGame;
 
   }
 
-
-
-    window.display();
   }
 
 
