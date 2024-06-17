@@ -1,6 +1,7 @@
 #ifndef EATER_H
 #define EATER_H
 
+#include <time.h>
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
@@ -18,16 +19,18 @@ class Eater{
 
 public:
   Eater();
-
-  enum class Stats {initGame, inGame, endGame, pause};
-  Stats stats;
+  ~Eater();
   
+  enum class Stats {inGame, endGame,pause};
+  Stats stats = Stats::inGame;
+
   RenderWindow window;
+  Event event;
   
   Font font;
     
   Text points, lose,gameOverTxt, restart, pauseTxt;
-  Color textColor;  
+  Color textColor, text2Color;  
 
   SoundBuffer clickBuffer, fallBuffer;
   Sound click, fall;
@@ -35,19 +38,17 @@ public:
 
   Texture sample, backText, gameOverText, carrotText;
   Sprite backImage, gameOverImage, carrotImage;
-
+  
+  size_t maxObj = 5, numOfObj = 0;
   RectangleShape *smile = new RectangleShape[maxObj];
   RectangleShape background, gameOver, carrot;
 
   Vector2i mouseCoord;
   Vector2f pixelMouseCoord;
-  float maxTimer, timer, speed, controlSpeed, xPosition;
+  float maxTimer, timer, speed;
   bool pressed, del;
-  int catchScore, loseScore;
-  size_t maxObj, numOfObj;
-
+  int catchScore, loseScore, controlSpeed, xPosition;
   
-  RectangleShape makesSquare(Sprite &image, RenderWindow &window);
 
 
   void code_game();
@@ -57,6 +58,10 @@ public:
   void run_game();
 
 };
+
+RectangleShape makesSquare(Sprite &image, RenderWindow &window);
+
+
 
 
 
